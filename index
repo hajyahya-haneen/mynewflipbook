@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Arabic Flipbook (26 pages)</title>
+
+  <style>
+    :root{
+      --bg: #f2f2f2;
+      --shadow: 0 18px 55px rgba(0,0,0,.18);
+      --radius: 14px;
+    }
+    *{ box-sizing:border-box; }
+    body{
+      margin:0;
+      min-height:100vh;
+      display:flex;
+      flex-direction:column;
+      justify-content:center;
+      align-items:center;
+      gap:12px;
+      background:var(--bg);
+      font-family: Arial, sans-serif;
+    }
+
+    /* منطقة الكتاب */
+    #stage{
+      width:min(1200px, 96vw);
+    }
+
+    /* مقاس الكتاب: صفحتين جنب بعض */
+    #book{
+      width:100%;
+      height: calc(min(1200px, 96vw) / 2); /* نسبة تقريبية 2:1 */
+      max-height: 80vh;
+      margin:0 auto;
+    }
+
+    /* تحسين شكل صفحات turn.js */
+    .page{
+      background:#fff;
+    }
+
+    /* صور الصفحات بدون أي انعكاس */
+    .page img{
+      width:100%;
+      height:100%;
+      object-fit:contain;
+      display:block;
+      transform:none !important;
+      -webkit-transform:none !important;
+    }
+
+    /* ظل وإطار */
+    .turn-page{
+      border-radius: 0;
+    }
+
+    #book-wrap{
+      position:relative;
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow:hidden;
+      background:#fff;
+    }
+
+    /* أزرار */
+    .controls{
+      display:flex;
+      gap:10px;
+      align-items:center;
+      justify-content:center;
+      direction:rtl;
+      flex-wrap:wrap;
+    }
+    button{
+      border:0;
+      padding:10px 14px;
+      border-radius:12px;
+      cursor:pointer;
+      background:#111;
+      color:#fff;
+      font-size:14px;
+    }
+    button:active{ transform: translateY(1px); }
+    .hint{
+      font-size:13px;
+      color:#444;
+      direction:rtl;
+      text-align:center;
+      max-width:min(900px, 95vw);
+      line-height:1.6;
+    }
+  </style>
+
+  <!-- jQuery (مطلوب لـ Turn.js) -->
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+
+  <!-- Turn.js (نسخة CDN شائعة) -->
+  <script src="https://cdn.jsdelivr.net/npm/turn.js@4/turn.min.js"></script>
+</head>
+
+<body>
+
+  <div id="stage">
+    <div id="book-wrap">
+      <div id="book">
+        <!-- 26 صفحة: page01.jpg إلى page26.jpg -->
+        <div class="page"><img src="page01.jpg" alt="page01"></div>
+        <div class="page"><img src="page02.jpg" alt="page02"></div>
+        <div class="page"><img src="page03.jpg" alt="page03"></div>
+        <div class="page"><img src="page04.jpg" alt="page04"></div>
+        <div class="page"><img src="page05.jpg" alt="page05"></div>
+        <div class="page"><img src="page06.jpg" alt="page06"></div>
+        <div class="page"><img src="page07.jpg" alt="page07"></div>
+        <div class="page"><img src="page08.jpg" alt="page08"></div>
+        <div class="page"><img src="page09.jpg" alt="page09"></div>
+        <div class="page"><img src="page10.jpg" alt="page10"></div>
+        <div class="page"><img src="page11.jpg" alt="page11"></div>
+        <div class="page"><img src="page12.jpg" alt="page12"></div>
+        <div class="page"><img src="page13.jpg" alt="page13"></div>
+        <div class="page"><img src="page14.jpg" alt="page14"></div>
+        <div class="page"><img src="page15.jpg" alt="page15"></div>
+        <div class="page"><img src="page16.jpg" alt="page16"></div>
+        <div class="page"><img src="page17.jpg" alt="page17"></div>
+        <div class="page"><img src="page18.jpg" alt="page18"></div>
+        <div class="page"><img src="page19.jpg" alt="page19"></div>
+        <div class="page"><img src="page20.jpg" alt="page20"></div>
+        <div class="page"><img src="page21.jpg" alt="page21"></div>
+        <div class="page"><img src="page22.jpg" alt="page22"></div>
+        <div class="page"><img src="page23.jpg" alt="page23"></div>
+        <div class="page"><img src="page24.jpg" alt="page24"></div>
+        <div class="page"><img src="page25.jpg" alt="page25"></div>
+        <div class="page"><img src="page26.jpg" alt="page26"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <button id="prev">السابق</button>
+    <button id="next">التالي</button>
+    <button id="first">الغلاف</button>
+    <button id="last">الغلاف الخلفي</button>
+  </div>
+
+  <div class="hint">
+    إذا أردت الكتاب “يفتح عربي” (من اليمين إلى اليسار) ويقلب لليسار: استخدمي أزرار التالي/السابق أو الأسهم من لوحة المفاتيح.
+  </div>
+
+  <script>
+    (function(){
+      const $book = $("#book");
+
+      function init(){
+        // قياس ديناميكي: نحاول الحفاظ على نسبة صفحتين
+        const wrapWidth = Math.min(1200, Math.floor(window.innerWidth * 0.96));
+        const height = Math.min(Math.floor(wrapWidth / 2), Math.floor(window.innerHeight * 0.80));
+
+        $book.turn({
+          width: wrapWidth,
+          height: height,
+          autoCenter: true,
+
+          // RTL: يبدأ من اليمين وتقليب نحو اليسار
+          direction: "rtl",
+
+          // تأثيرات
+          gradients: true,
+          acceleration: true,
+          elevation: 50,
+
+          // عرض صفحة واحدة للغلافين
+          display: "double",
+
+          // تأكد من ترتيب الصفحات مضبوط
+          pages: 26,
+
+          // الغلافان منفردان
+          when: {
+            turned: function(e, page){
+              // لا شيء إلزامي هنا
+            }
+          }
+        });
+
+        // مهم: Turn.js في RTL عادة يبدأ بالغلاف على اليمين
+        // أنتِ طلبتِ الغلاف الأول يكون على اليسار بالبداية
+        // الحل: نذهب للصفحة 2 فوراً ثم نرجع للصفحة 1 "كمنظر مفتوح"
+        // بحيث يظهر الغلاف في اليسار وتكون الجهة اليمنى فارغة (سلوك شائع للغلاف)
+        setTimeout(() => {
+          $book.turn("page", 2);
+          setTimeout(() => $book.turn("page", 1), 50);
+        }, 50);
+      }
+
+      function destroyIfNeeded(){
+        if ($book.data("turn")) {
+          $book.turn("destroy");
+          $book.html($book.html()); // إعادة بناء DOM بسيط
+        }
+      }
+
+      // أزرار
+      $("#next").on("click", () => $book.turn("next"));
+      $("#prev").on("click", () => $book.turn("previous"));
+      $("#first").on("click", () => $book.turn("page", 1));
+      $("#last").on("click", () => $book.turn("page", 26));
+
+      // أسهم الكيبورد
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "ArrowLeft")  $book.turn("next");     // RTL: السهم لليسار = التالي
+        if (e.key === "ArrowRight") $book.turn("previous"); // RTL: السهم لليمين = السابق
+      });
+
+      // تشغيل أول مرة + عند تغيير حجم الشاشة
+      window.addEventListener("load", () => init());
+      window.addEventListener("resize", () => {
+        destroyIfNeeded();
+        init();
+      });
+    })();
+  </script>
+
+</body>
+</html>
