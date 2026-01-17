@@ -7,8 +7,8 @@
 
   <style>
     :root{
-      --book-width: 800px;   /* كان 600، صار 800 */
-      --book-height: 560px;  /* ارتفاع مناسب للعرض الجديد */
+      --book-width: 800px;   /* تكبير */
+      --book-height: 560px;  /* ارتفاع مناسب */
     }
 
     *{ box-sizing:border-box; }
@@ -41,11 +41,11 @@
 
     .page{ background:#fff; position:relative; }
 
-    /* مهم جدًا: لا تدعي الصورة تلتقط النقرات */
+    /* مهم: لا تدعي الصورة تلتقط النقرات */
     .page img{
       width:100%;
       height:100%;
-      object-fit:contain;
+      object-fit:contain;     /* يحافظ على كامل الصورة بدون قص */
       display:block;
       transform:none !important;
       pointer-events:none;
@@ -56,8 +56,8 @@
     /* مناطق نقر شفافة مثل زاوية صفحة */
     .corner{
       position:absolute;
-      width: 120px;
-      height: 120px;
+      width: 130px;
+      height: 130px;
       bottom: 0;
       z-index: 99999;
       background: rgba(0,0,0,0);
@@ -133,7 +133,7 @@
   <script>
     (function(){
       const TOTAL = 26;
-      const PREFIX = "page"; // إذا ملفاتك image01..image26 غيّريها إلى "image"
+      const PREFIX = "page"; // أسماء الملفات: page01..page26
       const EXT = "jpg";     // غيّريها إلى "png" إذا صورك PNG
 
       const $book = $("#book");
@@ -141,12 +141,13 @@
 
       function pad2(n){ return String(n).padStart(2, "0"); }
 
-      // تبديل أزواج الصفحات: 02<->03, 04<->05 ... 24<->25
-      // مع تثبيت الغلافين: 01 و 26
+      // تبديل أزواج الصفحات من 02 إلى 25:
+      // 02<->03, 04<->05, ... 24<->25
+      // وتثبيت 01 و 26
       function mappedIndex(i){
         if (i === 1 || i === TOTAL) return i;
-        // نبدّل فقط من 2 إلى 25
-        // زوج: (even <-> even+1) و (odd <-> odd-1)
+
+        // داخل [2..25]
         if (i % 2 === 0) return i + 1; // 2->3, 4->5, ... 24->25
         return i - 1;                  // 3->2, 5->4, ... 25->24
       }
