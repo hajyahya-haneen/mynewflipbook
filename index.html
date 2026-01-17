@@ -1,256 +1,181 @@
 <!doctype html>
 <html lang="ar" dir="rtl">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Flipbook RTL - PageFlip</title>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Flipbook – ضبط الإطار</title>
 
-  <style>
-    *{ box-sizing:border-box; }
-    body{
-      margin:0;
-      min-height:100vh;
-      display:flex;
-      flex-direction:column;
-      align-items:center;
-      justify-content:center;
-      gap:12px;
-      background:#f2f2f2;
-      font-family: Arial, sans-serif;
-    }
+<style>
+*{ box-sizing:border-box; }
 
-    /* حاوية تستجيب للكمبيوتر والهاتف */
-    #book-wrap{
-      width: min(1200px, 96vw);
-      height: min(85vh, 800px);
-      background:#fff;
-      border-radius:16px;
-      box-shadow: 0 18px 55px rgba(0,0,0,.18);
-      overflow:hidden;
-      position:relative;
-    }
+body{
+  margin:0;
+  min-height:100vh;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:12px;
+  background:#f2f2f2;
+  font-family: Arial, sans-serif;
+}
 
-    #book{
-      width:100%;
-      height:100%;
-    }
+/* حاوية الكتاب */
+#book-wrap{
+  width: min(1200px, 96vw);
+  height: min(85vh, 800px);
+  background:#fff;
+  border-radius:16px;
+  box-shadow:0 18px 55px rgba(0,0,0,.18);
+  overflow:hidden;
+  position:relative;
+}
 
-    /* أزرار */
-    .controls{
-      display:flex;
-      gap:10px;
-      align-items:center;
-      justify-content:center;
-      flex-wrap:wrap;
-      direction:rtl;
-    }
-    button{
-      border:0;
-      padding:10px 14px;
-      border-radius:12px;
-      cursor:pointer;
-      background:#111;
-      color:#fff;
-      font-size:14px;
-    }
+#book{
+  width:100%;
+  height:100%;
+}
 
-    .hint{
-      font-size:13px;
-      color:#444;
-      direction:rtl;
-      text-align:center;
-      max-width:min(900px, 95vw);
-      line-height:1.6;
-    }
+/* الصفحة نفسها = الإطار */
+.page{
+  width:100%;
+  height:100%;
+  overflow:hidden;                 /* الحل الأساسي */
+  display:flex;                    /* لتوسيط الصورة */
+  align-items:center;
+  justify-content:center;
+  background:#fff;
+}
 
-    /* “فقط من الزاوية”: مناطق تفاعل صغيرة في الزوايا
-       - نخلي فقط هذه المناطق تستقبل اللمس/الماوس
-       - أي ضغط بغير الزوايا لن يقلب */
-    #corner-guard{
-      position:absolute;
-      inset:0;
-      z-index:50;
-      pointer-events:none; /* افتراضياً لا يلتقط */
-    }
-    .corner-hotspot{
-      position:absolute;
-      width: 120px;
-      height: 120px;
-      pointer-events:auto;  /* فقط الزوايا تلتقط */
-      background: rgba(0,0,0,0);
-    }
-    /* RTL: الزاوية اليسار = التالي (تقليب لليسار) */
-    .bl{ left:0; bottom:0; cursor:pointer; }
-    /* RTL: الزاوية اليمين = السابق */
-    .br{ right:0; bottom:0; cursor:pointer; }
+/* الصورة لا تتجاوز الإطار */
+.page img{
+  max-width:100%;
+  max-height:100%;
+  width:auto;
+  height:auto;
+  object-fit:contain;              /* بدون قص */
+  display:block;
+  user-select:none;
+  pointer-events:none;
+}
 
-    @media (max-width: 480px){
-      #book-wrap{ height: min(78vh, 680px); }
-      .corner-hotspot{ width: 95px; height: 95px; }
-    }
-  </style>
+/* مناطق الزوايا فقط */
+.corner{
+  position:absolute;
+  width:120px;
+  height:120px;
+  bottom:0;
+  z-index:50;
+  background:rgba(0,0,0,0);
+  pointer-events:auto;
+}
 
-  <!-- PageFlip (St.PageFlip) + يعتمد على سكربت المكتبة لديك -->
-  <!-- ضعي ملف pageflip.min.js محلياً أو اتركي رابطك إن كان يعمل -->
-  <script src="pageflip.min.js"></script>
+.corner.next{ left:0; cursor:pointer; }
+.corner.prev{ right:0; cursor:pointer; }
+
+@media (max-width:480px){
+  .corner{ width:90px; height:90px; }
+}
+
+.controls{
+  display:flex;
+  gap:10px;
+  direction:rtl;
+}
+
+button{
+  padding:10px 14px;
+  border-radius:12px;
+  border:0;
+  background:#111;
+  color:#fff;
+  cursor:pointer;
+}
+</style>
+
+<script src="pageflip.min.js"></script>
 </head>
 
 <body>
 
-  <div id="book-wrap">
-    <div id="book"></div>
+<div id="book-wrap">
+  <div id="book"></div>
 
-    <!-- حارس الزوايا: يمنع التقليب من أي مكان غير الزوايا -->
-    <div id="corner-guard" aria-hidden="true">
-      <div class="corner-hotspot bl" title="التالي"></div>
-      <div class="corner-hotspot br" title="السابق"></div>
-    </div>
-  </div>
+  <!-- الزوايا -->
+  <div class="corner next"></div>
+  <div class="corner prev"></div>
+</div>
 
-  <div class="controls">
-    <button type="button" id="prev">السابق</button>
-    <button type="button" id="next">التالي</button>
-    <button type="button" id="first">الغلاف</button>
-    <button type="button" id="last">الغلاف الخلفي</button>
-  </div>
+<div class="controls">
+  <button id="prev">السابق</button>
+  <button id="next">التالي</button>
+</div>
 
-  <div class="hint">
-    التقليب فقط من الزاوية: اضغطي/اسحبي من أسفل اليسار للتالي، وأسفل اليمين للسابق.
-    يعمل على الكمبيوتر والهاتف.
-  </div>
+<script>
+const TOTAL = 26;
+const PREFIX = "page";
+const EXT = "jpg";
 
-  <script>
-    // ========= إعدادات =========
-    const TOTAL = 26;
-    const PREFIX = "page";   // page01..page26
-    const EXT = "jpg";       // عدّليها إلى png إن لزم
+const bookEl = document.getElementById("book");
+const wrapEl = document.getElementById("book-wrap");
 
-    const bookEl = document.getElementById("book");
-    const wrapEl = document.getElementById("book-wrap");
+function pad(n){ return String(n).padStart(2,"0"); }
 
-    function pad2(n){ return String(n).padStart(2, "0"); }
+/* إنشاء الصفحات */
+for(let i=1;i<=TOTAL;i++){
+  const d = document.createElement("div");
+  d.className = "page";
+  d.innerHTML = `<img src="${PREFIX}${pad(i)}.${EXT}" alt="">`;
+  bookEl.appendChild(d);
+}
 
-    // توليد صفحات HTML (صور) داخل عنصر الكتاب
-    function buildPages() {
-      // صفحات PageFlip تكون عناصر داخل bookEl (مثلاً div.page)
-      bookEl.innerHTML = "";
-      for (let i=1; i<=TOTAL; i++){
-        const src = `${PREFIX}${pad2(i)}.${EXT}`;
-        const page = document.createElement("div");
-        page.className = "page";
-        // object-fit: contain يجعلها مناسبة بدون قص
-        page.innerHTML = `
-          <img src="${src}" alt="${PREFIX}${pad2(i)}"
-               style="width:100%;height:100%;object-fit:contain;display:block;user-select:none;-webkit-user-drag:none;">
-        `;
-        bookEl.appendChild(page);
-      }
-    }
+/* حساب مقاس الصفحة */
+function pageSize(){
+  const w = wrapEl.clientWidth;
+  const h = wrapEl.clientHeight;
+  return {
+    width: Math.min(600, Math.floor(w/2)),
+    height: Math.min(800, h)
+  };
+}
 
-    // حساب مقاس الصفحة الواحده بشكل مناسب للكمبيوتر والهاتف
-    // - على الكمبيوتر: صفحة واحدة عرضها ~ 520-600 (وبالتالي الكتاب صفحتين جنب بعض)
-    // - على الهاتف: صفحة واحدة أضيق تلقائياً
-    function computePageSize() {
-      const w = wrapEl.clientWidth;
-      const h = wrapEl.clientHeight;
+const {width, height} = pageSize();
 
-      // صفحة واحدة = تقريباً نصف العرض (للـ double) مع هامش بسيط
-      const pageWidth = Math.max(315, Math.min(600, Math.floor(w / 2)));
-      // ارتفاع مناسب (لا يتجاوز الحاوية)
-      const pageHeight = Math.max(315, Math.min(800, Math.floor(h)));
+/* PageFlip */
+const pageFlip = new St.PageFlip(bookEl, {
+  width,
+  height,
+  size:"stretch",
 
-      return { pageWidth, pageHeight };
-    }
+  minWidth:315,
+  maxWidth:1200,
+  minHeight:315,
+  maxHeight:1200,
 
-    let pageFlip = null;
+  showCover:true,
+  disableFlipByClick:true,
+  useMouseEvents:true,
+  swipeDistance:30,
+  flippingTime:700,
+  maxShadowOpacity:0.35
+});
 
-    function initFlip() {
-      if (!window.St || !St.PageFlip) {
-        console.error("PageFlip library not found. تأكدي أن pageflip.min.js موجود ومحمّل.");
-        return;
-      }
+pageFlip.loadFromHTML(document.querySelectorAll(".page"));
 
-      const { pageWidth, pageHeight } = computePageSize();
+/* RTL بصري */
+bookEl.style.transform = "scaleX(-1)";
+document.querySelectorAll(".page img").forEach(img=>{
+  img.style.transform="scaleX(-1)";
+});
 
-      // تهيئة جديدة عند تغيير المقاس
-      pageFlip = new St.PageFlip(bookEl, {
-        width: pageWidth,
-        height: pageHeight,
-        size: "stretch",
+/* أزرار */
+document.getElementById("next").onclick = ()=>pageFlip.flipNext();
+document.getElementById("prev").onclick = ()=>pageFlip.flipPrev();
 
-        minWidth: 315,
-        maxWidth: 1200,
-        minHeight: 315,
-        maxHeight: 1200,
-
-        showCover: true,               // الغلافين منفصلين
-        mobileScrollSupport: true,
-
-        useMouseEvents: true,
-        swipeDistance: 30,
-        flippingTime: 700,
-        maxShadowOpacity: 0.35,
-
-        // يهمنا هنا: لا نقلب بالنقر العام (سنسمح فقط من الزوايا)
-        disableFlipByClick: true
-      });
-
-      // تحميل الصفحات من عناصر DOM
-      pageFlip.loadFromHTML(document.querySelectorAll("#book .page"));
-
-      // RTL بصرياً: نجعل اتجاه الكتاب عربي (يبدأ من اليمين)
-      // PageFlip لا يملك "direction: rtl" موحد في كل الإصدارات،
-      // لذلك نطبّق انعكاس للحاوية ثم نلغي الانعكاس للصور كي لا تنعكس الكتابة.
-      // هذا يجعل الإحساس RTL (البدء من اليمين) مع تقليب للداخل.
-      wrapEl.style.direction = "rtl";
-      bookEl.style.transform = "scaleX(-1)";
-      bookEl.style.transformOrigin = "center";
-      // إلغاء الانعكاس للصور داخل الصفحات
-      document.querySelectorAll("#book img").forEach(img => {
-        img.style.transform = "scaleX(-1)";
-        img.style.transformOrigin = "center";
-      });
-
-      // ربط الأزرار
-      document.getElementById("next").onclick  = () => pageFlip.flipNext();
-      document.getElementById("prev").onclick  = () => pageFlip.flipPrev();
-      document.getElementById("first").onclick = () => pageFlip.turnToPage(0);
-      document.getElementById("last").onclick  = () => pageFlip.turnToPage(TOTAL - 1);
-
-      // “فقط من الزاوية”: نسمح بالسحب/النقر فقط داخل الـ hotspots
-      // - داخل الزاوية: نطلب flip مناسب
-      const bl = document.querySelector(".corner-hotspot.bl");
-      const br = document.querySelector(".corner-hotspot.br");
-
-      // الهاتف + الكمبيوتر: pointer events
-      const startDrag = (handler) => (ev) => {
-        ev.preventDefault();
-        ev.stopPropagation();
-        handler();
-      };
-
-      bl.onpointerdown = startDrag(() => pageFlip.flipNext());
-      br.onpointerdown = startDrag(() => pageFlip.flipPrev());
-
-      // منع أي نقر داخل الكتاب من قلب الصفحات
-      // (سيبقى السحب/اللمس الطبيعي للمكتبة لكن disableFlipByClick يمنع النقر العام)
-    }
-
-    // تشغيل أول مرة
-    buildPages();
-    initFlip();
-
-    // إعادة تهيئة عند تغيير المقاس
-    let t = null;
-    window.addEventListener("resize", () => {
-      clearTimeout(t);
-      t = setTimeout(() => {
-        // إعادة بناء وتفعيل من جديد
-        buildPages();
-        initFlip();
-      }, 150);
-    });
-  </script>
+/* زوايا */
+document.querySelector(".corner.next").onclick = ()=>pageFlip.flipNext();
+document.querySelector(".corner.prev").onclick = ()=>pageFlip.flipPrev();
+</script>
 
 </body>
 </html>
