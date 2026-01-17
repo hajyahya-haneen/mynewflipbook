@@ -3,9 +3,16 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Flipbook RTL (26)</title>
+  <title>Flipbook RTL (26 pages)</title>
 
   <style>
+    :root{
+      --book-width: 600px;
+      --book-height: 420px; /* غيّريها إذا بدك أقصر مثل 380 */
+    }
+
+    *{ box-sizing:border-box; }
+
     body{
       margin:0;
       min-height:100vh;
@@ -18,30 +25,54 @@
       font-family: Arial, sans-serif;
     }
 
-    /* عرض الكتاب: 600 (وعلى الشاشات الصغيرة يصير مرن) */
+    /* حاوية الكتاب */
     #book-wrap{
-      width: min(600px, 95vw);
+      width: min(var(--book-width), 95vw);
       border-radius: 16px;
       overflow:hidden;
       background:#fff;
       box-shadow: 0 18px 55px rgba(0,0,0,.18);
+      position:relative;
     }
 
-    /* ارتفاع مناسب لكتاب مصور (عدليه إذا بدك) */
+    /* عنصر الكتاب */
     #book{
-      width: 100%;
-      height: min(420px, 80vh);
+      width:100%;
+      height: var(--book-height);
     }
 
-    .page{ background:#fff; }
+    .page{
+      background:#fff;
+      position:relative;
+    }
 
+    /* مهم جدًا: لا تدعي الصورة تلتقط النقرات */
     .page img{
       width:100%;
       height:100%;
       object-fit:contain;
       display:block;
       transform:none !important;
+      pointer-events:none; /* حتى يعمل التقليب والازرار */
+      user-select:none;
+      -webkit-user-drag:none;
     }
+
+    /* مناطق نقر شفافة “مثل زاوية صفحة” */
+    .corner{
+      position:absolute;
+      width: 110px;
+      height: 110px;
+      bottom: 0;
+      z-index: 99999;
+      background: rgba(0,0,0,0); /* شفافة */
+      cursor: pointer;
+    }
+
+    /* في RTL: الزاوية أسفل اليسار = التالي (تقليب لليسار) */
+    #corner-next{ left: 0; }
+    /* الزاوية أسفل اليمين = السابق */
+    #corner-prev{ right: 0; }
 
     .controls{
       display:flex;
@@ -61,8 +92,9 @@
       color:#fff;
       font-size:14px;
     }
+
     button:disabled{
-      opacity:.5;
+      opacity:.55;
       cursor:not-allowed;
     }
 
@@ -74,66 +106,95 @@
       max-width:min(700px, 95vw);
       line-height:1.6;
     }
+
+    #status{
+      font-size:13px;
+      color:#b00020;
+      direction:rtl;
+      text-align:center;
+      min-height:18px;
+    }
   </style>
 
-  <!-- مهم: ترتيب التحميل -->
-  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/turn.js@4/turn.min.js"></script>
+  <!-- ملفات محلية (لا تستخدمي CDN) -->
+  <script src="jquery.min.js"></script>
+  <script src="turn.min.js"></script>
 </head>
 
 <body>
 
   <div id="book-wrap">
     <div id="book"></div>
+
+    <!-- نقر سريع على الزوايا -->
+    <div id="corner-next" class="corner" title="التالي"></div>
+    <div id="corner-prev" class="corner" title="السابق"></div>
   </div>
 
   <div class="controls">
-    <button id="prev">السابق</button>
-    <button id="next">التالي</button>
-    <button id="first">الغلاف</button>
-    <button id="last">الغلاف الخلفي</button>
+    <button type="button" id="prev">السابق</button>
+    <button type="button" id="next">التالي</button>
+    <button type="button" id="first">الغلاف</button>
+    <button type="button" id="last">الغلاف الخلفي</button>
   </div>
 
+  <div id="status"></div>
+
   <div class="hint">
-    تلميح: في وضع RTL السهم لليسار = التالي، والسهم لليمين = السابق.
+    في وضع RTL: أسفل اليسار = التالي (تقليب لليسار)، أسفل اليمين = السابق.
+    يمكنك أيضًا السحب بالماوس من الزاوية لتقليب واقعي.
   </div>
 
   <script>
     (function(){
       const TOTAL = 26;
-      const EXT = "jpg"; // غيّريها إلى "png" إذا صورك PNG
+      const EXT = "jpg"; // بدّليها إلى "png" إذا صورك PNG
       const $book = $("#book");
+      const $status = $("#status");
 
       function pad2(n){ return String(n).padStart(2, "0"); }
 
       function buildPages(){
         $book.empty();
-        for(let i=1;i<=TOTAL;i++){
-          const name = `page${pad2(i)}.${EXT}`;
-          const $p = $(`<div class="page"><img src="${name}" alt="page${pad2(i)}"></div>`);
-          $book.append($p);
+        for(let i=1; i<=TOTAL; i++){
+          const src = `page${pad2(i)}.${EXT}`;
+          $book.append(`
+            <div class="page">
+              <img src="${src}" alt="page${pad2(i)}">
+            </div>
+          `);
         }
       }
 
       function calcSize(){
-        // العرض = 600 أو أقل حسب الشاشة
         const width = Math.min(600, Math.floor(window.innerWidth * 0.95));
-        // ارتفاع متوازن (يمكنك تعديله)
-        const height = Math.min(420, Math.floor(window.innerHeight * 0.80));
-        return {width, height};
+        // ثبّتنا الارتفاع حسب CSS، لكن لو بدك ديناميكي:
+        const height = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--book-height'), 10) || 420;
+        return { width, height };
       }
 
-      function setButtonsEnabled(enabled){
-        $("#prev, #next, #first, #last").prop("disabled", !enabled);
+      function setButtons(enabled){
+        $("#prev,#next,#first,#last").prop("disabled", !enabled);
       }
 
-      function initTurn(){
+      function init(){
+        // تحقق وجود المكتبات
+        if (!window.jQuery) {
+          $status.text("jQuery غير موجود. تأكدي أن ملف jquery.min.js موجود بجانب index.html.");
+          return;
+        }
+        if (!$.fn.turn) {
+          $status.text("Turn.js غير موجود. تأكدي أن ملف turn.min.js موجود بجانب index.html وأن اسمه صحيح.");
+          return;
+        }
+        $status.text("");
+
+        buildPages();
+
         const {width, height} = calcSize();
 
-        // إذا كان turn موجود، دمّريه ثم أعيدي تهيئته
-        if ($book.data("turn")) {
-          $book.turn("destroy");
-        }
+        // إعادة تهيئة Turn
+        if ($book.data("turn")) $book.turn("destroy");
 
         $book.turn({
           width,
@@ -141,64 +202,48 @@
           autoCenter: true,
           direction: "rtl",
           display: "double",
+          pages: TOTAL,
           gradients: true,
           acceleration: true,
-          pages: TOTAL,
 
-          // الغلافان مفردان
+          // تقليب “واقعي” من الزوايا
+          turnCorners: "bl,br,tl,tr",
+
           when: {
-            turning: function(){
-              setButtonsEnabled(false);
-            },
-            turned: function(){
-              setButtonsEnabled(true);
-            }
+            turning: function(){ setButtons(false); },
+            turned: function(){ setButtons(true); }
           }
         });
 
-        // ضمان أن الأزرار تشتغل بعد التهيئة
-        setButtonsEnabled(true);
+        setButtons(true);
 
-        // (اختياري) إبقاء الغلاف الأول ظاهر كبداية (page 1)
+        // ابدأ بالغلاف
         $book.turn("page", 1);
+
+        // ربط الأزرار (مع إزالة أي ربط سابق)
+        $("#next").off("click").on("click", () => $book.turn("next"));
+        $("#prev").off("click").on("click", () => $book.turn("previous"));
+        $("#first").off("click").on("click", () => $book.turn("page", 1));
+        $("#last").off("click").on("click", () => $book.turn("page", TOTAL));
+
+        // نقر على الزوايا (سلوك كتاب حقيقي)
+        $("#corner-next").off("click").on("click", () => $book.turn("next"));
+        $("#corner-prev").off("click").on("click", () => $book.turn("previous"));
+
+        // كيبورد
+        document.onkeydown = (e) => {
+          if (e.key === "ArrowLeft")  $book.turn("next");      // RTL: يسار = التالي
+          if (e.key === "ArrowRight") $book.turn("previous");  // RTL: يمين = السابق
+        };
       }
 
-      // ربط أزرار بعد جاهزية الصفحة (مهم)
-      $(function(){
-        buildPages();
-        initTurn();
+      window.addEventListener("load", init);
 
-        $("#next").on("click", function(){
-          if(!$book.data("turn")) return;
-          $book.turn("next"); // في RTL هذا “التالي” (يقلب لليسار)
-        });
-
-        $("#prev").on("click", function(){
-          if(!$book.data("turn")) return;
-          $book.turn("previous");
-        });
-
-        $("#first").on("click", function(){
-          if(!$book.data("turn")) return;
-          $book.turn("page", 1);
-        });
-
-        $("#last").on("click", function(){
-          if(!$book.data("turn")) return;
-          $book.turn("page", TOTAL);
-        });
-
-        // الأسهم من الكيبورد
-        document.addEventListener("keydown", (e) => {
-          if(!$book.data("turn")) return;
-          if (e.key === "ArrowLeft")  $book.turn("next");
-          if (e.key === "ArrowRight") $book.turn("previous");
-        });
-
-        // إعادة ضبط المقاس عند تغيير حجم الشاشة
-        window.addEventListener("resize", () => {
-          initTurn();
-        });
+      // عند تغيير حجم الشاشة، أعد التهيئة للحفاظ على المقاس
+      let resizeTimer = null;
+      window.addEventListener("resize", () => {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(init, 150);
       });
     })();
   </script>
